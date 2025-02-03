@@ -1,14 +1,25 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct EncryptedFile {
+    pub nonce: [u8; 12],
+    pub file: String,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Serialize, Deserialize)]
+pub struct GetResponse {
+    pub nonce: [u8; 12],
+    pub file: String,
+    pub root: String,
+    pub index: usize,
+    pub length: usize,
+    pub proof: Vec<u8>
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[derive(Serialize, Deserialize)]
+pub struct PostResponse {
+    pub root: String,
+    pub index: usize,
+    pub length: usize,
+    pub proof: Vec<u8>
 }

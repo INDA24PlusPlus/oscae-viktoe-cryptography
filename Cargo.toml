@@ -3,4 +3,11 @@ name = "oscae-viktoe-cryptography"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = ["server", "client", "shared"]
+
 [dependencies]
+sha2 = "0.10"       # secure hashing
+rand = "0.8"        # random number generation
+aes-gcm = "0.10"    # symmetric encryption
+argon2 = "0.5"      # password hashing

@@ -6,6 +6,14 @@ edition = "2024"
 [workspace]
 members = ["server", "client", "shared"]
 
+[[bin]]
+name = "client"
+path = "./client/src/main.rs"
+
+[[bin]]
+name = "server"
+path = "./server/src/main.rs"
+
 [dependencies]
 sha2 = "0.10"       # secure hashing
 rand = "0.8"        # random number generation

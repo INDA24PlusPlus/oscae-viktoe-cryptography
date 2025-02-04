@@ -18,6 +18,7 @@ pub struct GetResponse {
 
 #[derive(Serialize, Deserialize)]
 pub struct PostResponse {
+    pub id: usize,
     pub root: String,
     pub index: usize,
     pub length: usize,

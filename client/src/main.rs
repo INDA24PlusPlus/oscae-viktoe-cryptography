@@ -1,19 +1,12 @@
 use rand::Rng;
-use std::env::args;
+use reqwest::{Client, Response};
+use shared::EncryptedFile;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::Path;
-use base64::{encode, decode};
 
 use aes_gcm::{Aes256Gcm, Key, Nonce}; 
 use aes_gcm::aead::{Aead, KeyInit};
-use argon2::{Argon2, PasswordHasher, PasswordHash, password_hash::SaltString};
-
-
-struct EncryptedFile {
-    nonce: [u8; 12],
-    file: String, // base64 encoded
-}
+use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 
 use clap::{Parser, Subcommand};
 
@@ -73,17 +66,21 @@ fn send_file(password: &str, file: &str) {
     send_data(&encrypted_data);
 }
 
-fn send_data(data: &EncryptedFile) -> Result<(), Box<dyn Error>> {
+fn send_data(data: &EncryptedFile) -> Result<(), reqwest::Error> {
     let url = "172.0.0.1:8080/file";
-    let client = Client::new();
-    let response: Response = client.post(&url)
+    let client = reqwest::blocking::Client::new();
+    let response = client.post(url)
         .json(data)
         .send()?;
+
     if response.status().is_success() {
         todo!("print id of uploaded file");
-        Ok(())
-    } else {
-        Err(Box::from("Failed to upload data"))
+        return Ok(())
+    } 
+
+    match response.error_for_status() {
+        Ok(_) => Ok(()),
+        Err(error) => Err(error)
     }
 }
 
@@ -126,7 +123,7 @@ fn request_file(password: &str, id: usize, outfile: &str) {
     let key = key_from_password(password);
 
     // request file from server
-    let encrypted_data = request_data(id);
+    let encrypted_data = request_data(id).unwrap();
 
     // decrypt file with password
     let data = decrypt_data(encrypted_data, &key);
@@ -135,11 +132,10 @@ fn request_file(password: &str, id: usize, outfile: &str) {
     write_file(&data, outfile);
 }
 
-fn request_data(id: usize) -> Result<EncryptedFile, Box<dyn Error>> {
-    todo!();
+fn request_data(id: usize) -> Result<EncryptedFile, reqwest::Error> {
     let url = format!("127.0.0.1:8080/file?id={}", id);
-    let response = Client::new().get(&url).send()?;
-    let encrypted_file// = response.json()?;
+    let response = reqwest::blocking::get(&url)?;
+    let encrypted_file = response.json()?;
     Ok(encrypted_file)
 }
 

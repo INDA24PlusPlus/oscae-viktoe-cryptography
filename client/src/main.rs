@@ -1,6 +1,6 @@
 use rand::Rng;
 use reqwest::{Client, Response};
-use shared::EncryptedFile;
+use shared::{EncryptedFile, PostResponse};
 use std::fs::File;
 use std::io::{Read, Write};
 
@@ -9,6 +9,8 @@ use aes_gcm::aead::{Aead, KeyInit};
 use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 
 use clap::{Parser, Subcommand};
+
+use rs_merkle::{MerkleTree, Hasher, algorithms::Sha256, MerkleProof};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -43,7 +45,6 @@ fn main() {
 
     match args.command {
         Commands::Upload { password, file_path } => {
-            
             send_file(&password, &file_path);
         }
         Commands::Download { password, file_id, outfile } => {
@@ -66,21 +67,32 @@ fn send_file(password: &str, file: &str) {
     send_data(&encrypted_data);
 }
 
-fn send_data(data: &EncryptedFile) -> Result<(), reqwest::Error> {
-    let url = "172.0.0.1:8080/file";
+fn send_data(data: &EncryptedFile) {
+    let url = "http://127.0.0.1:8080/file";
     let client = reqwest::blocking::Client::new();
     let response = client.post(url)
         .json(data)
-        .send()?;
+        .send().expect("Failed to send file");
 
     if response.status().is_success() {
-        todo!("print id of uploaded file");
-        return Ok(())
-    } 
+        let post_resonse: PostResponse = match response.json() {
+            Ok(response) => response,
+            Err(e) => {
+                println!("Failed to parse response: {}", e);
+                return;
+            }
+        };
 
-    match response.error_for_status() {
-        Ok(_) => Ok(()),
-        Err(error) => Err(error)
+        println!("Uploaded with file ID: {}", post_resonse.index);
+        // merkle tree proof
+        //let proof = MerkleProof::<Sha256>::try_from(post_resonse.proof.as_slice());
+        
+        //if !proof.verify(post_resonse., &indices_to_prove, leaves_to_prove, leaves.len()) {
+        //    println!("Proof verification failed");
+        //}
+    
+    } else {
+        println!("Failed to upload file");
     }
 }
 
@@ -133,7 +145,7 @@ fn request_file(password: &str, id: usize, outfile: &str) {
 }
 
 fn request_data(id: usize) -> Result<EncryptedFile, reqwest::Error> {
-    let url = format!("127.0.0.1:8080/file?id={}", id);
+    let url = format!("http://127.0.0.1:8080/file?id={}", id);
     let response = reqwest::blocking::get(&url)?;
     let encrypted_file = response.json()?;
     Ok(encrypted_file)

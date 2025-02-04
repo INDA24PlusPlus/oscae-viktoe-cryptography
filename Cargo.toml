@@ -20,7 +20,7 @@ rand = "0.8"        # random number generation
 aes-gcm = "0.10"    # symmetric encryption
 argon2 = "0.5"      # password hashing
 actix-web = "4.9.0"
-rusqlite = "0.33.0"
+rusqlite = { version = "0.33.0", features = ["bundled"] }
 rs_merkle = "1.4.2"
 base64 = "0.22.1"
 serde = "1.0.217"

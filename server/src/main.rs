@@ -62,7 +62,7 @@ async fn get_file(server_state: Data<ServerState>, id: Query<GetQuery>) -> impl 
     let db = server_state.db.lock().unwrap();
     let tree = server_state.tree.lock().unwrap();
     let file: String = db
-        .query_row("SELECT file FROM db WHERE id=$1", [id.id], |row| row.get(0))
+        .query_row("SELECT file FROM db WHERE id=?1", [id.id], |row| row.get(0))
         .unwrap();
 
     let encrypted_file: EncryptedFile = serde_json::from_str(&file).unwrap();

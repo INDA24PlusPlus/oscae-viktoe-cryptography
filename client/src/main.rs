@@ -1,6 +1,5 @@
 use base64::{Engine, prelude::BASE64_STANDARD};
 use rand::Rng;
-use reqwest::{Client, Response};
 use shared::{EncryptedFile, GetResponse, PostResponse};
 use std::fs::File;
 use std::io::{Read, Write};
@@ -11,7 +10,7 @@ use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 
 use clap::{Parser, Subcommand};
 
-use rs_merkle::{MerkleTree, Hasher, algorithms::Sha256, MerkleProof};
+use rs_merkle::{Hasher, algorithms::Sha256, MerkleProof};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -117,7 +116,7 @@ fn encrypt_data(data: &Vec<u8>, key: &Key<Aes256Gcm>) -> EncryptedFile {
     let encrypted_data = cipher.encrypt(&nonce, data.as_ref()).unwrap();
     EncryptedFile {
         nonce: nonce_bytes,
-        file: base64::encode(&encrypted_data),
+        file: BASE64_STANDARD.encode(&encrypted_data),
     }
 }
 
@@ -165,7 +164,7 @@ fn request_data(id: usize) -> Result<GetResponse, reqwest::Error> {
 fn decrypt_data(data: EncryptedFile, key: &Key<Aes256Gcm>) -> Vec<u8> {
     // decrypt data
     let nonce = Nonce::from_slice(data.nonce.as_ref());
-    let data = base64::decode(data.file).expect("Error decoding base64 from server");
+    let data = BASE64_STANDARD.decode(data.file).expect("Error decoding base64 from server");
     let cipher = Aes256Gcm::new(key);
     cipher.decrypt(nonce, data.as_ref()).unwrap()
 }

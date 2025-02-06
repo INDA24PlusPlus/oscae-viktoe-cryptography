@@ -61,13 +61,18 @@ async fn get_file(server_state: Data<ServerState>, id: Query<GetQuery>) -> impl 
     println!("request file: {}", id.id);
     let db = server_state.db.lock().unwrap();
     let tree = server_state.tree.lock().unwrap();
-    let file: String = db
-        .query_row("SELECT file FROM db WHERE id=?1", [id.id], |row| row.get(0))
+    let (file, nonce): (String, String) = db
+        .query_row("SELECT file, nonce FROM db WHERE id=?1", [id.id], |row| {
+            Ok((row.get(0).unwrap(), row.get(1).unwrap()))
+        })
         .unwrap();
 
-    let encrypted_file: EncryptedFile = serde_json::from_str(&file).unwrap();
-
     let hash = Sha256::hash(&BASE64_STANDARD.decode(&file).unwrap());
+
+    let encrypted_file = EncryptedFile {
+        file,
+        nonce: to_array(BASE64_STANDARD.decode(nonce).unwrap()).unwrap(),
+    };
 
     let levaves = tree.leaves().unwrap();
     let index = levaves.iter().position(|leaf| *leaf == hash).unwrap();
@@ -80,7 +85,7 @@ async fn get_file(server_state: Data<ServerState>, id: Query<GetQuery>) -> impl 
         index,
         length: tree.leaves_len(),
         proof,
-        root: tree.root_hex().unwrap(),
+        root: tree.root().unwrap()
     };
 
     HttpResponse::Ok().json(res)
@@ -99,7 +104,15 @@ async fn store_file(server_state: Data<ServerState>, body: String) -> impl Respo
         BASE64_STANDARD.encode(file.nonce),
     ]);
 
-    let id: usize = db.query_row("SELECT id FROM db WHERE file=?1", [file.file.clone()], |row| row.get(0)).unwrap();
+    let id: usize = db
+        .query_row(
+            "SELECT id FROM db WHERE file=?1",
+            [file.file.clone()],
+            |row| row.get(0),
+        )
+        .unwrap();
+
+    println!("stored as {}", id);
 
     let hash = Sha256::hash(&BASE64_STANDARD.decode(file.file.clone()).unwrap());
     tree.insert(hash).commit();
@@ -111,11 +124,25 @@ async fn store_file(server_state: Data<ServerState>, body: String) -> impl Respo
 
     let res = PostResponse {
         id,
-        root: tree.root_hex().unwrap(),
+        root: tree.root().unwrap(),
         index,
         length: tree.leaves_len(),
         proof,
     };
 
     HttpResponse::Ok().json(res)
+}
+
+fn to_array(vec: Vec<u8>) -> Result<[u8; 12], ()> {
+    if vec.len() != 12 {
+        return Err(());
+    }
+
+    let mut array = [0; 12];
+
+    for (i, num) in vec.iter().enumerate() {
+        array[i] = *num;
+    }
+
+    Ok(array)
 }

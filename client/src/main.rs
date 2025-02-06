@@ -1,6 +1,7 @@
+use base64::{Engine, prelude::BASE64_STANDARD};
 use rand::Rng;
 use reqwest::{Client, Response};
-use shared::{EncryptedFile, PostResponse};
+use shared::{EncryptedFile, GetResponse, PostResponse};
 use std::fs::File;
 use std::io::{Read, Write};
 
@@ -83,13 +84,14 @@ fn send_data(data: &EncryptedFile) {
             }
         };
 
-        println!("Uploaded with file ID: {}", post_resonse.index);
+        println!("Uploaded with file ID: {}", post_resonse.id);
         // merkle tree proof
-        //let proof = MerkleProof::<Sha256>::try_from(post_resonse.proof.as_slice());
-        
-        //if !proof.verify(post_resonse., &indices_to_prove, leaves_to_prove, leaves.len()) {
-        //    println!("Proof verification failed");
-        //}
+        let proof = MerkleProof::<Sha256>::try_from(post_resonse.proof.as_slice()).unwrap();
+        let leaf = Sha256::hash(&BASE64_STANDARD.decode(&data.file).unwrap());
+
+        if !proof.verify(post_resonse.root, &[post_resonse.index], &[leaf], post_resonse.length) {
+            println!("Proof verification failed");
+        }
     
     } else {
         println!("Failed to upload file");
@@ -135,7 +137,16 @@ fn request_file(password: &str, id: usize, outfile: &str) {
     let key = key_from_password(password);
 
     // request file from server
-    let encrypted_data = request_data(id).unwrap();
+    let get_response = request_data(id).unwrap();
+
+    let proof = MerkleProof::<Sha256>::try_from(get_response.proof.as_slice()).unwrap();
+    let leaf = Sha256::hash(&BASE64_STANDARD.decode(&get_response.file).unwrap());
+
+    if !proof.verify(get_response.root, &[get_response.index], &[leaf], get_response.length) {
+        println!("Proof verification failed");
+    }
+
+    let encrypted_data = EncryptedFile { nonce: get_response.nonce, file: get_response.file };
 
     // decrypt file with password
     let data = decrypt_data(encrypted_data, &key);
@@ -144,7 +155,7 @@ fn request_file(password: &str, id: usize, outfile: &str) {
     write_file(&data, outfile);
 }
 
-fn request_data(id: usize) -> Result<EncryptedFile, reqwest::Error> {
+fn request_data(id: usize) -> Result<GetResponse, reqwest::Error> {
     let url = format!("http://127.0.0.1:8080/file?id={}", id);
     let response = reqwest::blocking::get(&url)?;
     let encrypted_file = response.json()?;

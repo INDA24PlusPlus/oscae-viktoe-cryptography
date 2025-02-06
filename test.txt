@@ -1,0 +1,16 @@
+   46  cargo run --bin client download pass 1 bruh
+   47  vi client/src/main.rs
+   48  cargo run --bin client download pass 1 bruh
+   49  vi client/src/main.rs
+   50  cargo run --bin client download pass 1 bruh
+   51  vi client/src/main.rs
+   52  vi server/src/main.rs
+   53  cargo run --bin client download pass 1 bruh
+   54  vi server/src/main.rs
+   55  vi client/src/main.rs
+   56  cargo run --bin client download pass 1 bruh
+   57  vi client/src/main.rs
+   58  cargo run --bin client download pass 1 bruh
+   59  cargo run --bin client download pass 1 bruh
+   60  ls
+   61  history
